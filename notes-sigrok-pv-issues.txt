@@ -1,0 +1,128 @@
+Recommendations for the LA2106 support in SigRok PV
+===================================================
+
+Relevant source:
+https://sigrok.org/gitweb/?p=libsigrok.git;a=tree;f=src/hardware/kingst-la2016;hb=HEAD
+
+Florian made a great start to supporting the Kingst LA2016 in PulseView but I think some aspects need adjustment.
+Note that the LA1016 is the same hardware and is limited to 100MHz by the OEM software.
+I expect the LA1016 will sample at 200MHz from PV, same as LA2016.
+
+The main components of the LA are:
+
+Cypress FX2 80c51 Microcontroller with High Speed 480Mb/s USB interface
+EEPROM for FX2 configuration
+Cyclone 4 FPGA
+128MByte SDRAM
+Dual Op-Amp PWM DAC for input threshold adjustment
+Unbranded IC for device authentication (SOIC8 adjacent to the LED), probably a small microcontroller. No impact on PV integration, ignore it.
+
+Very quick summary of operation:
+
+The FX2 firmware and FPGA bitstream are loaded from the PC before use.
+The FX2 sends the bitstream to the FPGA using sync serial connection (Altera passive serial configuration). EP2 > SCON0.
+The FPGA stores samples in the SDRAM as repetition packets; 16bit inputs plus one byte repeat count.
+To facilitate fast data upload the FPGA reads data from the SDRAM and passes it to the FX2 GPIF interface. FPGA > EP86.
+
+The FPGA has approximately 60 byte-wide registers accessed via SPI (FX2 is master) to control sampling and data upload.
+The FPGA registers have an address range of 0x00 to 0x7F. Most are write only and just read as zero.
+To read a register, the top bit of the address is set high. For write it is low.
+0x80 means read register 0x00. 0x90 means read register 0x10.
+This may have caused some confusion as the FPGA register addresses are wrong in PV.
+Alternatively, the OEM may have changed the fw and bitstream.
+
+For easy experimentation, a few python scripts are provided for controlling the LA2016/LA1016.
+Most of the code is in klarty.py
+The other python files labelled 1,2,3 should be run in that order to program the FX2, FPGA and run the analyser.
+Firmware files are not included, they will need extracted from OEM software.
+The python files and OEM software used for testing are archived here:
+https://bitbucket.org/magellanic-clouds/
+
+The python script from extracting firmware and bitsteam are linked on this page:
+https://sigrok.org/wiki/Kingst_LA2016
+The extracted FX2 firmware functions OK.
+However, in my experience, the extracted bitstream does not operate correctly.
+A bitstream extracted from OEM software USB communication packets did work correctly.
+
+Here are my thoughts on PV code as of JAN2021:
+
+Issue 0
+=======
+I recommend using #defines for the FX2 control commands, just to improve readability
+Something like this perhaps:
+FX2CMD_KAUTH_x60_d96 = 96               # Used to communicate with the authentication IC 'KAuth' (SOIC8 adjacent to LED)
+FX2CMD_FPGA_PROG_x50_d80 = 80           # Begin\end the FPGA bitstream programming mode
+FX2CMD_FPGA_ENABLE_x10_d16 = 16         # Control the FPGA RESET pin
+FX2CMD_RESET_BULK_TRANSFER_x38_d56 = 56 # Stop any ongoing capture upload from FPGA and flush the FX2 USB bulk endpoints
+FX2CMD_START_BULK_TRANSFER_x30_d48 = 48 # Sets FPGA Reg1=1 to begin bulk transfer of the capture data to the FX2
+FX2CMD_EEPROM_xA2_d162 = 162            # Access I2C EEPROM AT24C02 (256 bytes). IN transfer to read, OUT to write.
+FX2CMD_EE2KAUTH_x68_d104 = 104          # Reads 16 bytes from EEPROM address 0x10 and sends them to the 'KAuth' chip
+FX2CMD_FPGA_SPI_x20_d32 = 32            # Access the register bank in the FPGA via SPI bus
+
+
+Issue 1
+=======
+In protocol.c some FPGA register addresses are wrong:
+/* registers for control request 32: */
+#define CTRL_RUN         0x00
+#define CTRL_PWM_EN      0x02
+#define CTRL_BULK        0x10  should be 0x08
+#define CTRL_SAMPLING    0x20  should be 0x10, same as CTRL_BULK. Different registers accessed depending on read/write.
+#define CTRL_TRIGGER     0x30  should be 0x20
+#define CTRL_THRESHOLD   0x48  should be 0x68
+#define CTRL_PWM1        0x70
+#define CTRL_PWM2        0x78
+
+There is quite a lot of FPGA access so to improve readability I would recommend adding
+specific functions that replace all the ctrl_out(sdi, 32,..) and ctrl_in(sdi, 32,...) calls.
+e.g.
+
+static int  fpga_write_spi(const struct sr_dev_inst *sdi, int first_register, void *data, uint16_t nbytes) {
+    return ctrl_out(sdi, FX2CMD_FPGA_SPI_x20_d32, first_register, 0, data, nbytes);
+}
+
+static int fpga_read_spi(const struct sr_dev_inst *sdi, int first_register, void *data, uint16_t nbytes) {
+    first_register |= 0x80; // Set the MSbit for read access
+    return ctrl_in(sdi, FX2CMD_FPGA_SPI_x20_d32, first_register, 0, data, nbytes);
+}
+
+
+Issue 2
+=======
+set_threshold_voltage()
+Threshold voltage setting code is wrong.
+There are two PWMs to setup.
+I recommend using the algorithim shown in Python code: set_trigger_config()
+
+
+Issue 3
+=======
+set_sample_config()
+I think this is not quite right.
+I recommend using the algorithim shown in Python code: set_sample_config()
+
+
+Issue 4
+=======
+la2016_has_triggered()
+return (state & 0x3) == 1;  // 0x3 should be 0x4
+
+
+Issue 5
+=======
+la2016_init_device()
+These eeprom reads are not needed and can be removed:
+650         if ((ret = ctrl_in(sdi, 162, 0x20, 0, &i1, sizeof(i1))) != SR_OK) {
+
+656         if ((ret = ctrl_in(sdi, 162, 0x08, 0, &i2, sizeof(i2))) != SR_OK) {
+
+The 'unknown' stuff can be removed.
+The four transactions with FX2 command 96 are not required (read serial number and authentication challenge-response)
+
+
+Issue 6
+=======
+FPGA bitstream might be obfuscated when stored on-disk.
+Also, the bitstream length is sent to the FX2 before download, this length might be obfuscated.
+Pad to length is given as 0x2c000 but perhaps should be 0x2d000? Or perhaps the rule is to always end with 4096 zeros.
+Lets see what happens in testing.

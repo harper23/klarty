@@ -1,0 +1,145 @@
+
+FX2 controls FPGA over SPI bus
+
+======================================  SPI bus activity when OEM software started ==================================================
+
+First byte is FPGA register address. The MSbit is set for READ transfers.
+|
+|  Following bytes are data written or READ
+|  |
+|  |
+80 FF   <-- Read RUN STATUS
+81 FF
+
+80 FF   <-- Read RUN STATUS
+81 FF
+
+68 3F   <-- SET THRESHOLD  
+69 02
+6A F2
+6B 00
+
+02 00  <-- BEGIN USER PWM SETTINGS / HALT PWM
+
+70 40  <-- USER PWM1 SETTINGS
+71 0D
+72 03
+73 00
+74 A0
+75 86
+76 01
+77 00
+
+78 D0  <-- USER PWM2 SETTINGS
+79 07
+7A 00
+7B 00
+7C E8
+7D 03
+7E 00
+7F 00
+
+02 03  <-- END USER PWM SETTINGS / ENABLE PWM
+
+
+
+=======================================  SPI bus activity for acquistion sequence ======================================
+
+
+
+OEM Software when hitting GO button with no triggers set does this to FPGA regs:
+
+03 00  <-- STOP SAMPLING
+
+TRIGGER SETUP
+20 FF  <-- enable all 16 channels
+21 FF
+22 00  <-- no triggers active
+23 00
+24 00
+25 00
+26 00
+27 00
+28 00
+29 00
+2A 00
+2B 00
+2C 00
+2D 00
+2E 00
+2F 00
+
+SAMPLING SETUP
+10 40  <-- 32 bit total samples count request
+11 42
+12 0F
+13 00
+14 00  <-- always zero
+15 00  <-- 32 bit pre-trigger samples
+16 00
+17 00
+18 00
+19 00   <- always zero?
+1A 00    <--|
+1B 00    <--These 3 bytes are pre_trigger_mem_bytes, see set_sample_config()
+1C 04    <--|
+1D C8  <-- Capture rate   1D is divisor LSbyte   200MHz / divisor - sample rate
+1E 00  <--                1E is divisor MSbyte
+1F 00
+
+
+00 03   <--- now running the capture
+
+
+80 E2  Reading capture status every 100ms or so
+81 85  
+
+80 EE  
+81 85  
+
+80 EE
+81 85  
+
+80 ED
+81 85
+
+
+
+
+Read 12 bytes from the FPGA registers starting at address 0x10 FPGA_REG_CTRL_BULK to get:
+        32bit n_rep_packets
+        32bit n_rep_packets_before_trigger
+        32bit write_pos     
+90 xx
+91 xx
+92 xx
+93 xx
+94 xx     see capture_info()
+95 xx    
+96 xx     xx == ooops didn't note this data
+97 xx
+98 xx
+99 xx
+9A xx
+9B xx
+
+
+       FPGA_REG_UPLOAD  Write two 32 bit numbers are written, SDRAM start address and n bytes for bulk upload
+08 00
+09 00
+0A 00
+0B 00
+0C 20
+0D A9
+0E 61
+0F 00
+
+
+01 01  
+
+       3ms gap
+
+00 00
+
+
+

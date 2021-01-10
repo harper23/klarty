@@ -1,0 +1,45 @@
+
+
+======================================  USB bus activity when OEM software started (Eltima USB Monitor) ==================================================
+
+IN  0xA2   4 bytes EEPROM from 0x20  20 11 df ee
+IN  0xA2   8 bytes EEPROM from 0x08  08 f7 00 00 08 f7 10 ef
+OUT 0x50   0x02b8ba     which says bitstream is 178362 bytes but its actually 178233
+
+bistream packets 4096 byte each  7...96 = 96-7+1 = 90 IN/OUT pkts, => 45 packets of 4096 = length of 2D000
+<finished bitsteam download>
+IN 0x50   got 0x00          FX2CMD_FPGA_PROG      OK
+
+OUT 0x10   FX2CMD_FPGA_ENABLE    OK
+
+IN 0x20    get_run_state   E985   OK
+
+OUT 0x60  FX2CMD_KAUTH     challenge  a3 09 c9 7b c7 57 3f ee 1c 8c 41
+
+IN 0x60   FX2CMD_KAUTH     response   a3 10 b8 09 92 29 62 1c  15 8d e2 33 17 31 5e bb  49 0c 
+
+IN 0x20    get_run_state   E985   OK
+
+OUT 0x60  FX2CMD_KAUTH     ask serial   a3 01 ca
+
+IN 0x60   FX2CMD_KAUTH     response   a3 08 18 07 47 3a 9f 5c 1a 00 00
+
+
+OUT 0x38   FX2CMD_RESET_BULK_TRANSFER
+
+OUT 0x20  FX2CMD_FPGA_SPI  addr=0x68   f4 01 f2 00      SET THRESHOLDS DEFAULT
+
+OUT 0x20  FX2CMD_FPGA_SPI  addr=0x02   00      PWM OFF
+
+OUT 0x20  FX2CMD_FPGA_SPI  addr=0x70    40 0d 03 00 a0 86 01 00         PWM1  
+
+OUT 0x20  FX2CMD_FPGA_SPI  addr=0x70    d0 07 00 00 e8 03 00 00         PWM2
+
+OUT 0x20  FX2CMD_FPGA_SPI  addr=0x02   03      PWM ON
+
+
+
+===============================
+
+
+
