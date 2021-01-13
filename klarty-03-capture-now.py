@@ -1,5 +1,6 @@
-from klarty import *
+from klarty import klarty
 from datetime import datetime
+import time
 
 sample_rate = 1e5
 sample_count = 5e5
@@ -7,6 +8,9 @@ pre_trigger_percent = 40
 
 d = klarty()
 d.connect()
+
+d.fpga_hold_in_reset()          # This seems necessary for the LA1016, to be investigated.
+d.fpga_release_reset_and_run()
 
 d.stop_sampling() # FPGAreg3 = 0x00
 

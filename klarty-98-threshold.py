@@ -1,4 +1,4 @@
-from klarty import *
+from klarty import klarty
 
 '''
 These are the values OEM software writes to FPGA

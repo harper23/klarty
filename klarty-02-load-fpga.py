@@ -1,4 +1,4 @@
-from klarty import *
+from klarty import klarty
 
 d = klarty()
 
