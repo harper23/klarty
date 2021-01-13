@@ -24,17 +24,18 @@ last_msg=''
 last_dt_ms=0
 while True:
     run_state = d.get_run_state()
+    run_state_mskd = 0x000F & run_state # Just use lower 4 bits
     time_delta = datetime.now() - start_time
     dt_ms = int(time_delta.total_seconds()*1000)
     if dt_ms >= 20 * 1000:
         break
-    if run_state == 0x85EE:
+    if run_state_mskd == 0x000E:
         msg = 'Running'
-    elif run_state == 0x85ED:
+    elif run_state_mskd == 0x000D:
         msg = 'COMPLETE'
-    elif run_state == 0x85EA:
+    elif run_state_mskd == 0x000A:
         msg = 'Waiting for trigger'
-    elif run_state == 0x85E2:
+    elif run_state_mskd == 0x0002:
         msg = 'Pre-sampling'
     else:
         msg = 'Unknown state!'
@@ -43,7 +44,7 @@ while True:
         last_dt_ms = dt_ms
         print(f'{dt_ms:8d}ms: run_state=0x{run_state:04x} {msg}')
     time.sleep(0.10)
-    if run_state == 0x85ED:
+    if run_state_mskd == 0x000D:
         break
 
 

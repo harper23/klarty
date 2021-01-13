@@ -25,6 +25,9 @@ except ImportError as e:
           "At command prompt type:\npy -m pip install pyusb\n"
           "Also, the libusb library needs to be on the system path")
 
+
+# Windows:
+
 # PyUSB needs you to place libusb appropriately:
 # https://github.com/libusb/libusb/releases
 # For 32-bit python put 32bit libusb-1.0.dll in C:\Windows\SysWOW64
@@ -39,6 +42,15 @@ except ImportError as e:
 # experiment using this python code. However, when the Kingst software is closed by normal method, it
 # sends a command to de-init the LA. This can be circumnavigated on Windows by first opening the
 # 'About' dialog in the Kingst software then force the application to quit from Task Manager.
+
+# Ubuntu:
+
+# sudo apt install python3-pip
+# pip install pyusb
+# sudo nano /etc/udev/rules.d/50-kingst.rules
+#      SUBSYSTEMS=="usb", ATTRS{idVendor}=="77a1", ATTRS{idProduct}=="01a2", GROUP="users", MODE="0666", SYMLINK+="kingst"
+
+# Notes:
 
 # This software is based on the work of Florian Schmidt with the changes required to run with available LA firmwares.
 # Reference for sigrok-pulseview LA2016 code:
@@ -514,6 +526,8 @@ class klarty:
         bit1  1=Writing to SDRAM
         bit2  1=Triggered (running)
         bit3  0=pre-trigger sampling  1=post-trigger sampling
+        ...
+        bit7  Sometimes set, sometimes not on LA1016. Just use lower 4 bits for run state.
         TODO  what are other bits? Not required anyway it seems.       
 
         reg1=
@@ -567,8 +581,9 @@ class klarty:
         pre_trigger_samples = int((capture_ratio_percent * n_samples) / 100)
         pre_trigger_mem_bytes = int((capture_ratio_percent * SAMPLE_MEM_SZ_BYTES) / 100)
         pre_trigger_mem_bytes = pre_trigger_mem_bytes & 0x00FFFFFF00 #Clear low byte
+        capture_time = sample_clock_divisor * n_samples/200e6
         p=struct.pack('<LBLLHB', int(n_samples), 0, pre_trigger_samples, pre_trigger_mem_bytes, sample_clock_divisor,0)
-        print(f'\nSample config: {int(n_samples)} samples at {200e3/sample_clock_divisor}kHz rate with {capture_ratio_percent}% pre-trigger samples.')
+        print(f'\nSample config: {int(n_samples)} samples at {200e3/sample_clock_divisor}kHz rate ({int(capture_time)}sec capture) with {capture_ratio_percent}% pre-trigger samples.')
         self.print_ascii_hex(p,'Sampling Config FPGA Register Values:')
         self.fpga_write(FPGA_REG_SAMPLING, p)
 
