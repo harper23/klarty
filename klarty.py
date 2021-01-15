@@ -18,6 +18,7 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 import zlib, struct, time, os, math
 from datetime import datetime
 from collections import namedtuple
+from enum import Enum
 try:
     import usb.core,usb.util
 except ImportError as e:
@@ -158,6 +159,10 @@ class Chunker:
                 raise StopIteration # Requested n_chunks completed
 
 
+class LA_models(Enum):
+    LA1016_R2 = 1 # Suspect two boards revisions because there are two bitstream revisions
+    LA2016_R2 = 2
+
 
 class klarty:
     """Kingst Logic Analyser Research Tool for You
@@ -172,6 +177,8 @@ class klarty:
 
     def __init__(self):
         self.dev = None
+        self.model = LA_models.LA2016_R2
+        self.fpga_clk = 200e6
     
 
     def __del__(self):
@@ -180,6 +187,14 @@ class klarty:
 
     def print_ascii_hex(self, data:bytes, prefix_msg='', postfix_msg=''):
         print(prefix_msg + ''.join('{:02X} '.format(b) for b in data) + postfix_msg)
+
+
+    def bcd_digits(self, bcd:bytes):
+        for b in bcd:
+            for val in (b >> 4, b & 0xF):
+                if val not in range(10):
+                    return
+                yield val
 
 
     def connect(self):
@@ -248,6 +263,10 @@ class klarty:
         All the bytes from the bitstream file are sent to the FX2 (EP2) which then
         sends them to the FPGA using the SPI connection (well, sync serial really, SCLK, MOSI, no CS),
         Intel/Altera Cyclone Passive Serial configuration method.
+        When the FPGA initialisation completes and it enters run mode, it receives 16 bytes from the
+        'KAuth' chip. The FPGA uses this to authenticate the bitstream. So, even although the LA1016
+        and LA2016 are the same hardware, you cannot use the LA2016 bitstream on the LA1016 to boost
+        it to the 200MHz sample rate.
         """
 
         if os.path.isfile(filename):
@@ -280,9 +299,13 @@ class klarty:
         if fw_crc == 0x31a1cffe:
             if fw_file_sz != 0x2d000:
                 raise ValueError(f'Bitstream file length is 0x{fw_file_sz:x} which is not 0x2d000 as expected for this file')
-            print('This file is recognised as the padded bitstream seen in USB packets between KingstVIS-Win v3.4.2 and the FX2')
-            # 0x2b8ba is the known obfuscated length for this bitstream
-            bitstream_length_obfuscated = 0x2b8ba
+            print('This file is recognised as the LA2016 padded bitstream seen in USB packets between KingstVIS-Win v3.4.2 and the FX2')
+            bitstream_length_obfuscated = 0x2b8ba # 0x2b8ba is the known obfuscated length for this bitstream
+        elif fw_crc == 0x03053104:
+            if fw_file_sz != 0x2d000:
+                raise ValueError(f'Bitstream file length is 0x{fw_file_sz:x} which is not 0x2d000 as expected for this file')
+            print('This file is recognised as the LA1016 padded bitstream seen in USB packets between KingstVIS-Win v3.4.2 and the FX2')
+            bitstream_length_obfuscated = 0x2b8cb # 0x2b8cb is the known obfuscated length for this bitstream
         else:
             print('This FPGA bitstream is not recognised, it may work but has not been tested on LA1016\\LA2016')
             print('Be aware the FX2 firmware might have an obfuscated length check on the FPGA bitstream to spoil your fun')
@@ -334,10 +357,12 @@ class klarty:
         256 bytes of EEPROM available
         Kingst software reads
         4 bytes starting at 0x20:  lax.eeprom_read(0x20, 4)
-        8 bytes starting at 0x08:  lax.eeprom_read(0x08, 8)        
+        8 bytes starting at 0x08:  lax.eeprom_read(0x08, 8)
+        The 4 bytes are probably purchase year & month in BCD format, with 16bit complemented checksum. e.g. 2004DFFB = 2020-April + 16bit checksum
+        The 8 bytes are probably 09F6000009F610EF for an LA1016 and 08F7000008F710EF for an LA2016
         """
 
-        return self.dev.ctrl_transfer(VENDOR_CTRL_IN, FX2CMD_EEPROM_xA2_d162, address, 0, n, 100)
+        return bytes(self.dev.ctrl_transfer(VENDOR_CTRL_IN, FX2CMD_EEPROM_xA2_d162, address, 0, n, 100))
 
 
     def eeprom_write(self, address, data:bytes):
@@ -349,6 +374,23 @@ class klarty:
         """
 
         self.dev.ctrl_transfer(VENDOR_CTRL_OUT, FX2CMD_EEPROM_xA2_d162, address, 0, data, 100)
+
+
+    def set_model_identity(self):
+        """Best guess at the bytes which determine the model, LA106 or LA2016"""
+        unit_type = self.eeprom_read(0x08, 8)
+        if unit_type == bytes([0x09, 0xF6, 0x00, 0x00, 0x09, 0xF6, 0x10, 0xEF]):
+            print('Unit type: LA1016 (100MHz FPGA clock)')
+            self.model = LA_models.LA1016_R2
+            self.fpga_clk = 100e6
+        elif unit_type == bytes([0x08, 0xF7, 0x00, 0x00, 0x08, 0xF7, 0x10, 0xEF]):
+            print('Unit type: LA2016 (200MHz FPGA clock)')
+            self.model = LA_models.LA2016_R2
+            self.fpga_clk = 200e6
+        else:
+            print('Unit type: Note recognised (using default 200MHz FPGA clock value for capture calculations)')
+            self.model = LA_models.LA2016_R2
+            self.fpga_clk = 200e6
 
 
     def kauth_read_serial(self):
@@ -456,10 +498,10 @@ class klarty:
 
         The FPGA has two programmable PWM outputs which use 32bit
         period and duty comparator registers. The PWM counters
-        are clocked at 200MHz.
+        are clocked at 200MHz in both the LA1016 and LA2016.
         """
 
-        PWM_CLOCK = 200e6
+        PWM_CLOCK = 200e6 # 200MHz in both the LA1016 and LA2016
         period = int((PWM_CLOCK / freq) + 0.5)
         duty = int((period * duty / 100.0) + 0.5)
         p=struct.pack('<LL', period, duty)
@@ -521,13 +563,15 @@ class klarty:
         0x85ED: Done
 
         reg0=
-        written with 0x03 to begin capture
+        Written with 0x03 to begin capture. Use lower 4 bits for run state:
         bit0  1=Done
         bit1  1=Writing to SDRAM
         bit2  1=Triggered (running)
         bit3  0=pre-trigger sampling  1=post-trigger sampling
         ...
-        bit7  Sometimes set, sometimes not on LA1016. Just use lower 4 bits for run state.
+        bit7  Set when FPGA bitstream has been successfully authenticated with 'KAuth' chip.
+                Seen it low during capture when using wrong bitstream or when 'KAuth' chip
+                pins 3&4 shorted during FPGA initialisation.
         TODO  what are other bits? Not required anyway it seems.       
 
         reg1=
@@ -571,17 +615,16 @@ class klarty:
         """
 
         # clock_divisor
-        MAX_SAMPLE_RATE = 200e6
-        sample_clock_divisor = int ((MAX_SAMPLE_RATE / sample_rate) + 0.5)
+        sample_clock_divisor = int ((self.fpga_clk / sample_rate) + 0.5)
         if sample_clock_divisor > 0xffff:
             sample_clock_divisor = 0xffff
-        self.curr_samplerate = MAX_SAMPLE_RATE / sample_clock_divisor
+        self.curr_samplerate = self.fpga_clk / sample_clock_divisor
         # capture_ratio_percent determines number of samples stored prior to trigger event
         SAMPLE_MEM_SZ_BYTES = 128 * 1024 * 1024
         pre_trigger_samples = int((capture_ratio_percent * n_samples) / 100)
         pre_trigger_mem_bytes = int((capture_ratio_percent * SAMPLE_MEM_SZ_BYTES) / 100)
         pre_trigger_mem_bytes = pre_trigger_mem_bytes & 0x00FFFFFF00 #Clear low byte
-        capture_time = sample_clock_divisor * n_samples/200e6
+        capture_time = sample_clock_divisor * n_samples/self.fpga_clk
         p=struct.pack('<LBLLHB', int(n_samples), 0, pre_trigger_samples, pre_trigger_mem_bytes, sample_clock_divisor,0)
         print(f'\nSample config: {int(n_samples)} samples at {200e3/sample_clock_divisor}kHz rate ({int(capture_time)}sec capture) with {capture_ratio_percent}% pre-trigger samples.')
         self.print_ascii_hex(p,'Sampling Config FPGA Register Values:')

@@ -1,10 +1,16 @@
-from klarty import klarty
+from klarty import klarty, LA_models
 
 d = klarty()
-
 d.connect()
 
-d.load_fpga_fw('kingst-v3.4.2-tested.bitstream')
+d.set_model_identity() # Set FPGA clock rate for capture calculations
+
+if d.model == LA_models.LA1016_R2:
+    d.load_fpga_fw('kingst-LA1016-WinV3.4.3-tested.bitstream')
+elif d.model == LA_models.LA2016_R2:
+    d.load_fpga_fw('kingst-LA2016-WinV3.4.3-tested.bitstream')
+else:
+    raise ValueError('FixMe: not sure which bitstream to load')
 
 print('Set defaults:')
 

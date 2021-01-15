@@ -9,8 +9,7 @@ pre_trigger_percent = 40
 d = klarty()
 d.connect()
 
-d.fpga_hold_in_reset()          # This seems necessary for the LA1016, to be investigated.
-d.fpga_release_reset_and_run()
+d.set_model_identity() # Set FPGA clock rate for capture calculations
 
 d.stop_sampling() # FPGAreg3 = 0x00
 
@@ -43,7 +42,7 @@ while True:
         msg = 'Pre-sampling'
     else:
         msg = 'Unknown state!'
-    if last_msg != msg or dt_ms > (last_dt_ms+1000):
+    if last_msg != msg or dt_ms > (last_dt_ms+500):
         last_msg = msg
         last_dt_ms = dt_ms
         print(f'{dt_ms:8d}ms: run_state=0x{run_state:04x} {msg}')
