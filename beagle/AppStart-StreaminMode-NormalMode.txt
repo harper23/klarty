@@ -1,0 +1,41 @@
+D:\Projects\sigrok\klarty\beagle>py csv2xfer.py -i "KingstVIS 3.4.3\AppStart-StreaminMode-NormalMode-XL.csv"
+C0 A2 20 00 00 00 04 00   REQUEST  IN bReq:a2 wValue:0020 wIndex:00 wLength: 4 [20 08 DF F7                                           ] read i1
+C0 A2 08 00 00 00 08 00   REQUEST  IN bReq:a2 wValue:0008 wIndex:00 wLength: 8 [08 F7 00 00 08 F7 10 EF                               ] read i2
+40 50 00 00 00 00 04 00   REQUEST OUT bReq:50 wValue:0000 wIndex:00 wLength: 4 [BA B8 02 00                                           ] bitstream size
+C0 50 00 00 00 00 01 00   REQUEST  IN bReq:50 wValue:0000 wIndex:00 wLength: 1 [00                                                    ] bitstream upload result
+40 10 01 00 00 00 00 00   REQUEST OUT bReq:10 wValue:0001 wIndex:00 wLength: 0 [                                                      ] enable fpga
+C0 20 00 00 00 00 02 00   REQUEST  IN bReq:20 wValue:0000 wIndex:00 wLength: 2 [E9 85                                                 ] run state
+40 60 00 00 00 00 0B 00   REQUEST OUT bReq:60 wValue:0000 wIndex:00 wLength:11 [A3 09 C9 ED 79 0C 25 13 8B 8A CB                      ] unknown
+C0 60 00 00 00 00 12 00   REQUEST  IN bReq:60 wValue:0000 wIndex:00 wLength:18 [A3 10 74 D3 F3 5D 72 D1 DF 1F 16 74 85 21 74 D1 8B 11 ] unknown
+C0 20 00 00 00 00 02 00   REQUEST  IN bReq:20 wValue:0000 wIndex:00 wLength: 2 [E9 85                                                 ] run state
+40 60 00 00 00 00 03 00   REQUEST OUT bReq:60 wValue:0000 wIndex:00 wLength: 3 [A3 01 CA                                              ] unknown
+C0 60 00 00 00 00 0C 00   REQUEST  IN bReq:60 wValue:0000 wIndex:00 wLength:12 [A3 08 17 77 89 14 DD 92 93 BF 00 00                   ] unknown
+40 38 00 00 00 00 00 00   REQUEST OUT bReq:38 wValue:0000 wIndex:00 wLength: 0 [                                                      ] reset bulk state
+40 20 68 00 00 00 04 00   REQUEST OUT bReq:20 wValue:0068 wIndex:00 wLength: 4 [6D 02 F2 00                                           ] fastflo would send bulk config to wValue=0x10
+40 20 02 00 00 00 01 00   REQUEST OUT bReq:20 wValue:0002 wIndex:00 wLength: 1 [00                                                    ] PWM enable
+40 20 70 00 00 00 08 00   REQUEST OUT bReq:20 wValue:0070 wIndex:00 wLength: 8 [40 0D 03 00 A0 86 01 00                               ] PWM1
+40 20 78 00 00 00 08 00   REQUEST OUT bReq:20 wValue:0078 wIndex:00 wLength: 8 [D0 07 00 00 E8 03 00 00                               ] PWM2
+40 20 02 00 00 00 01 00   REQUEST OUT bReq:20 wValue:0002 wIndex:00 wLength: 1 [03                                                    ] PWM enable
+40 20 03 00 00 00 01 00   REQUEST OUT bReq:20 wValue:0003 wIndex:00 wLength: 1 [01                                                    ]
+40 20 20 00 00 00 10 00   REQUEST OUT bReq:20 wValue:0020 wIndex:00 wLength:16 [FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00       ] sampling
+40 20 10 00 00 00 10 00   REQUEST OUT bReq:20 wValue:0010 wIndex:00 wLength:16 [20 4E 00 00 00 00 00 00 00 00 66 66 00 D0 07 00       ] trigger
+40 38 00 00 00 00 00 00   REQUEST OUT bReq:38 wValue:0000 wIndex:00 wLength: 0 [                                                      ] reset bulk state
+40 20 00 00 00 00 01 00   REQUEST OUT bReq:20 wValue:0000 wIndex:00 wLength: 1 [03                                                    ] control run
+40 30 00 00 00 00 00 00   REQUEST OUT bReq:30 wValue:0000 wIndex:00 wLength: 0 [                                                      ]
+40 20 00 00 00 00 01 00   REQUEST OUT bReq:20 wValue:0000 wIndex:00 wLength: 1 [00                                                    ] control run
+02 01 00 00 86 00 00 00   REQUEST OUT bReq:01 wValue:0000 wIndex:86 wLength: 0 [00                                                    ]
+40 20 03 00 00 00 01 00   REQUEST OUT bReq:20 wValue:0003 wIndex:00 wLength: 1 [00                                                    ]
+40 20 20 00 00 00 10 00   REQUEST OUT bReq:20 wValue:0020 wIndex:00 wLength:16 [FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00       ] sampling
+40 20 10 00 00 00 10 00   REQUEST OUT bReq:20 wValue:0010 wIndex:00 wLength:16 [20 4E 00 00 00 00 00 00 00 00 66 66 00 D0 07 00       ] trigger
+40 20 00 00 00 00 01 00   REQUEST OUT bReq:20 wValue:0000 wIndex:00 wLength: 1 [03                                                    ] control run
+C0 20 00 00 00 00 02 00   REQUEST  IN bReq:20 wValue:0000 wIndex:00 wLength: 2 [EE 85                                                 ] run state
+C0 20 00 00 00 00 02 00   REQUEST  IN bReq:20 wValue:0000 wIndex:00 wLength: 2 [EE 85                                                 ] run state
+C0 20 00 00 00 00 02 00   REQUEST  IN bReq:20 wValue:0000 wIndex:00 wLength: 2 [EE 85                                                 ] run state
+C0 20 00 00 00 00 02 00   REQUEST  IN bReq:20 wValue:0000 wIndex:00 wLength: 2 [EE 85                                                 ] run state
+C0 20 00 00 00 00 02 00   REQUEST  IN bReq:20 wValue:0000 wIndex:00 wLength: 2 [ED 85                                                 ] run state
+C0 20 10 00 00 00 0C 00   REQUEST  IN bReq:20 wValue:0010 wIndex:00 wLength:12 [A4 01 00 00 00 00 00 00 40 05 00 00                   ] capture info
+40 38 00 00 00 00 00 00   REQUEST OUT bReq:38 wValue:0000 wIndex:00 wLength: 0 [                                                      ] reset bulk state
+40 20 08 00 00 00 08 00   REQUEST OUT bReq:20 wValue:0008 wIndex:00 wLength: 8 [00 00 00 00 40 05 00 00                               ]
+40 30 00 00 00 00 00 00   REQUEST OUT bReq:30 wValue:0000 wIndex:00 wLength: 0 [                                                      ]
+02 01 00 00 86 00 00 00   REQUEST OUT bReq:01 wValue:0000 wIndex:86 wLength: 0 [                                                      ]
+40 20 00 00 00 00 01 00   REQUEST OUT bReq:20 wValue:0000 wIndex:00 wLength: 1 [00                                                    ] control run
